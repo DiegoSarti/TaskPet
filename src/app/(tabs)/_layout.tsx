@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { AppState, Text } from 'react-native';
 
 import { colors } from '@/constants/theme';
+import { useReminderSync } from '@/hooks/useReminderSync';
 import { useSnapshotSync } from '@/hooks/useSnapshotSync';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -18,6 +19,7 @@ export default function TabsLayout() {
   const pet = useAppStore((s) => s.pet);
   const checkDeath = useAppStore((s) => s.checkDeath);
   useSnapshotSync();
+  useReminderSync();
 
   // Confere se o pet morreu ao abrir o app e sempre que ele volta para a frente.
   useEffect(() => {

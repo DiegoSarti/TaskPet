@@ -22,9 +22,19 @@ Sem configurar o Supabase, o app roda completo no aparelho e a aba **Amigos** mo
 
 ### Ativando o lado social (Supabase)
 1. Crie um projeto em [supabase.com](https://supabase.com).
-2. Rode o SQL de `supabase/migrations/` (pelo SQL Editor do painel ou com `supabase db push`).
-3. Copie `.env.example` para `.env.local` e preencha a URL e a chave anon do projeto.
+2. No painel, abra **SQL Editor → New query**, cole todo o conteúdo de
+   `supabase/migrations/20261112000000_init.sql` e clique em **Run**.
+3. Copie `.env.example` para `.env.local` e preencha a URL e a chave anon do projeto
+   (**Project Settings → API**).
 4. Reinicie o `npm start`.
+
+Por padrão o Supabase pede confirmação de e-mail no cadastro; o app já trata isso. Para testar mais rápido,
+dá para desligar em **Authentication → Sign In / Providers → Email → Confirm email**.
+
+### Notificações
+Os lembretes são notificações locais (não precisam de servidor) e funcionam no Expo Go.
+Cada tarefa pode ter um horário de lembrete, e o app avisa quando o pet fica triste, doente ou está no último dia.
+Tudo é reagendado automaticamente: tarefa já concluída não gera lembrete.
 
 ## Scripts
 

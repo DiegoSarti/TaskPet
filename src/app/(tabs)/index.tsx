@@ -26,10 +26,19 @@ export default function TodayScreen() {
   const stageLabel = STAGES[status.stageIndex].label;
   const auraLabel = AURAS.find((a) => a.aura === status.aura)?.label;
 
-  const confirmArchive = (id: string, title: string) =>
-    Alert.alert('Remover tarefa', `Remover "${title}"? O histórico continua salvo.`, [
+  const taskMenu = (id: string, title: string) =>
+    Alert.alert(title, undefined, [
+      { text: 'Editar / lembrete', onPress: () => router.push({ pathname: '/new-task', params: { id } }) },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('Remover tarefa', `Remover "${title}"? O histórico continua salvo.`, [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Remover', style: 'destructive', onPress: () => archiveTask(id) },
+          ]),
+      },
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => archiveTask(id) },
     ]);
 
   return (
@@ -90,10 +99,10 @@ export default function TodayScreen() {
               date={today}
               onIncrement={() => mark(t.id, 1)}
               onDecrement={() => mark(t.id, -1)}
-              onLongPress={() => confirmArchive(t.id, t.title)}
+              onLongPress={() => taskMenu(t.id, t.title)}
             />
           ))}
-          <Text style={[styles.muted, { textAlign: 'center', fontSize: 12 }]}>Segure uma tarefa para remover.</Text>
+          <Text style={[styles.muted, { textAlign: 'center', fontSize: 12 }]}>Segure uma tarefa para editar, criar lembrete ou remover.</Text>
         </View>
       )}
 

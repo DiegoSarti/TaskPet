@@ -42,6 +42,7 @@ export function TaskRow({ task, log, date, onIncrement, onDecrement, onLongPress
         <Text style={styles.meta}>
           {FREQ_LABEL(task)}
           {periodText}
+          {task.reminderTime ? ` · 🔔 ${task.reminderTime}` : ''}
         </Text>
         {task.target > 1 && (
           <View style={styles.bar}>

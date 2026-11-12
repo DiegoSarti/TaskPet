@@ -51,15 +51,22 @@ export async function currentUserId(): Promise<string | null> {
   return data.session?.user.id ?? null;
 }
 
+/**
+ * Cria a conta. O perfil (nome de usuário e nome) é criado pelo próprio banco,
+ * a partir dos dados enviados aqui. Retorna true se for preciso confirmar o e-mail.
+ */
 export async function signUp(email: string, password: string, username: string, displayName: string) {
   const sb = client();
-  const { data, error } = await sb.auth.signUp({ email, password });
+  const { data: available, error: checkErr } = await sb.rpc('username_available', { name: username });
+  if (checkErr) throw checkErr;
+  if (!available) throw new Error('Esse nome de usuário já está em uso.');
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: { data: { username: username.toLowerCase(), display_name: displayName } },
+  });
   if (error) throw error;
-  if (!data.user) throw new Error('Confira seu e-mail para confirmar a conta.');
-  const { error: pErr } = await sb
-    .from('profiles')
-    .insert({ id: data.user.id, username: username.toLowerCase(), display_name: displayName });
-  if (pErr) throw pErr;
+  return !data.session;
 }
 
 export async function signIn(email: string, password: string) {

@@ -1,10 +1,11 @@
-import { router } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { colors, radius } from '@/constants/theme';
 import { CATEGORIES } from '@/domain/species';
 import type { Category, Frequency, Task } from '@/domain/types';
+import { ensurePermission, notificationsSupported } from '@/lib/notifications';
 import { useAppStore } from '@/store/useAppStore';
 
 type FreqType = Frequency['type'];
@@ -26,15 +27,26 @@ const FREQS: { id: FreqType; label: string }[] = [
 ];
 const WEEK = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
+const MINUTES = [0, 15, 30, 45];
+const pad = (n: number) => String(n).padStart(2, '0');
+
 export default function NewTaskScreen() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const editing = useAppStore((s) => s.tasks.find((t) => t.id === id));
   const addTask = useAppStore((s) => s.addTask);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<Category>('outro');
-  const [freq, setFreq] = useState<FreqType>('daily');
-  const [days, setDays] = useState<number[]>([1, 3, 5]);
-  const [times, setTimes] = useState(3);
-  const [target, setTarget] = useState(1);
-  const [unit, setUnit] = useState('');
+  const updateTask = useAppStore((s) => s.updateTask);
+  const f = editing?.frequency;
+
+  const [title, setTitle] = useState(editing?.title ?? '');
+  const [category, setCategory] = useState<Category>(editing?.category ?? 'outro');
+  const [freq, setFreq] = useState<FreqType>(f?.type ?? 'daily');
+  const [days, setDays] = useState<number[]>(f?.type === 'weekdays' ? f.days : [1, 3, 5]);
+  const [times, setTimes] = useState(f?.type === 'weekly' ? f.timesPerWeek : f?.type === 'monthly' ? f.timesPerMonth : 3);
+  const [target, setTarget] = useState(editing?.target ?? 1);
+  const [unit, setUnit] = useState(editing?.unit ?? '');
+  const [reminderOn, setReminderOn] = useState(!!editing?.reminderTime);
+  const [hour, setHour] = useState(editing?.reminderTime ? Number(editing.reminderTime.slice(0, 2)) : 9);
+  const [minute, setMinute] = useState(editing?.reminderTime ? Number(editing.reminderTime.slice(3, 5)) : 0);
 
   const icon = CATEGORIES.find((c) => c.id === category)?.icon ?? '⭐';
   const valid = title.trim().length > 0 && (freq !== 'weekdays' || days.length > 0);
@@ -46,22 +58,48 @@ export default function NewTaskScreen() {
     return { type: 'daily' };
   };
 
+  const toggleReminder = async (on: boolean) => {
+    if (on && !(await ensurePermission())) {
+      Alert.alert('Notificações bloqueadas', 'Ative as notificações do TaskPet nos ajustes do celular para receber lembretes.');
+      return;
+    }
+    setReminderOn(on);
+  };
+
   const save = () => {
     if (!valid) return;
-    addTask({ title: title.trim(), icon, category, frequency: buildFrequency(), target, unit: unit.trim() || undefined });
+    const data = {
+      title: title.trim(),
+      icon: editing && editing.category === category ? editing.icon : icon,
+      category,
+      frequency: buildFrequency(),
+      target,
+      unit: unit.trim() || undefined,
+      reminderTime: reminderOn ? `${pad(hour)}:${pad(minute)}` : undefined,
+    };
+    if (editing) updateTask(editing.id, data);
+    else addTask(data);
     router.back();
   };
 
+  /** Preenche o formulário com a sugestão, para o usuário ajustar e escolher o lembrete. */
   const applyTemplate = (t: (typeof TEMPLATES)[number]) => {
-    addTask(t);
-    router.back();
+    setTitle(t.title);
+    setCategory(t.category);
+    setFreq(t.frequency.type);
+    if (t.frequency.type === 'weekdays') setDays(t.frequency.days);
+    if (t.frequency.type === 'weekly') setTimes(t.frequency.timesPerWeek);
+    if (t.frequency.type === 'monthly') setTimes(t.frequency.timesPerMonth);
+    setTarget(t.target);
+    setUnit(t.unit ?? '');
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.label}>Sugestões rápidas</Text>
+      <Stack.Screen options={{ title: editing ? 'Editar tarefa' : 'Nova tarefa' }} />
+      {!editing && <Text style={styles.label}>Sugestões rápidas</Text>}
       <View style={styles.wrap}>
-        {TEMPLATES.map((t) => (
+        {!editing && TEMPLATES.map((t) => (
           <Pressable key={t.title} style={styles.pill} onPress={() => applyTemplate(t)}>
             <Text style={styles.pillText}>
               {t.icon} {t.title}
@@ -70,7 +108,7 @@ export default function NewTaskScreen() {
         ))}
       </View>
 
-      <Text style={styles.label}>Ou crie a sua</Text>
+      <Text style={styles.label}>{editing ? 'Nome' : 'Ou crie a sua'}</Text>
       <TextInput value={title} onChangeText={setTitle} placeholder="Nome da tarefa" style={styles.input} maxLength={40} />
 
       <Text style={styles.label}>Categoria</Text>
@@ -125,6 +163,33 @@ export default function NewTaskScreen() {
         <TextInput value={unit} onChangeText={setUnit} placeholder="Unidade (ex.: copos, páginas)" style={styles.input} maxLength={15} />
       )}
 
+      {notificationsSupported && (
+        <>
+          <View style={styles.stepper}>
+            <Text style={styles.label}>Lembrete 🔔</Text>
+            <Switch value={reminderOn} onValueChange={toggleReminder} trackColor={{ true: colors.primary }} />
+          </View>
+          {reminderOn && (
+            <>
+              <Stepper label="Hora" value={hour} min={0} max={23} onChange={setHour} format={pad} />
+              <View style={styles.stepper}>
+                <Text style={styles.label}>Minutos</Text>
+                <View style={styles.wrap}>
+                  {MINUTES.map((m) => (
+                    <Pressable key={m} style={[styles.pill, minute === m && styles.pillOn]} onPress={() => setMinute(m)}>
+                      <Text style={[styles.pillText, minute === m && styles.pillTextOn]}>:{pad(m)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <Text style={styles.hint}>
+                Lembrete às {pad(hour)}:{pad(minute)} nos dias da tarefa. Se você já tiver concluído, ele não toca.
+              </Text>
+            </>
+          )}
+        </>
+      )}
+
       <Pressable style={[styles.button, !valid && { opacity: 0.4 }]} disabled={!valid} onPress={save}>
         <Text style={styles.buttonText}>Salvar tarefa</Text>
       </Pressable>
@@ -132,8 +197,15 @@ export default function NewTaskScreen() {
   );
 }
 
-function Stepper(props: { label: string; value: number; min: number; max: number; onChange: (n: number) => void }) {
-  const { label, value, min, max, onChange } = props;
+function Stepper(props: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+  format?: (n: number) => string;
+}) {
+  const { label, value, min, max, onChange, format = String } = props;
   return (
     <View style={styles.stepper}>
       <Text style={styles.label}>{label}</Text>
@@ -141,7 +213,7 @@ function Stepper(props: { label: string; value: number; min: number; max: number
         <Pressable style={styles.stepBtn} onPress={() => onChange(Math.max(min, value - 1))}>
           <Text style={styles.stepBtnText}>−</Text>
         </Pressable>
-        <Text style={styles.stepValue}>{value}</Text>
+        <Text style={styles.stepValue}>{format(value)}</Text>
         <Pressable style={styles.stepBtn} onPress={() => onChange(Math.min(max, value + 1))}>
           <Text style={styles.stepBtnText}>+</Text>
         </Pressable>

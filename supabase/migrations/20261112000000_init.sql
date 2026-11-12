@@ -13,6 +13,32 @@ create table public.profiles (
   created_at timestamptz not null default now()
 );
 
+-- O perfil é criado automaticamente no cadastro, com os dados enviados em signUp(options.data).
+-- Assim funciona mesmo quando o Supabase exige confirmação de e-mail (sem sessão logo após o cadastro).
+create or replace function public.handle_new_user()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into profiles (id, username, display_name)
+  values (
+    new.id,
+    lower(new.raw_user_meta_data ->> 'username'),
+    coalesce(nullif(new.raw_user_meta_data ->> 'display_name', ''), new.raw_user_meta_data ->> 'username')
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Permite checar se o nome de usuário está livre antes do cadastro.
+create or replace function public.username_available(name text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from profiles where username = lower(name));
+$$;
+grant execute on function public.username_available(text) to anon, authenticated;
+
 -- Amizades ------------------------------------------------------------------
 create table public.friendships (
   requester uuid not null references public.profiles (id) on delete cascade,

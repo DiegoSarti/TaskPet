@@ -21,7 +21,12 @@ export default function AuthScreen() {
         if (!/^[a-z0-9_]{3,20}$/.test(username.toLowerCase())) {
           throw new Error('Nome de usuário: 3 a 20 letras, números ou _.');
         }
-        await signUp(email.trim(), password, username, displayName.trim() || username);
+        const needsConfirmation = await signUp(email.trim(), password, username, displayName.trim() || username);
+        if (needsConfirmation) {
+          Alert.alert('Confirme seu e-mail', 'Enviamos um link para o seu e-mail. Depois de confirmar, volte aqui e entre.');
+          setMode('login');
+          return;
+        }
       }
       router.back();
     } catch (e: any) {

@@ -26,6 +26,8 @@ export interface Task {
   /** Quantas vezes marcar no dia para concluir (ex.: 8 copos de água). */
   target: number;
   unit?: string;
+  /** Horário do lembrete no formato HH:MM (opcional). */
+  reminderTime?: string;
   createdAt: DateKey;
   /** Tarefas removidas são arquivadas para não alterar o histórico de streak. */
   archivedAt?: DateKey;

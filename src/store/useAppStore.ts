@@ -4,6 +4,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { todayKey } from '@/domain/dates';
 import { computePetStatus, countOn, stageForXp, xpDelta } from '@/domain/engine';
+import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from '@/domain/reminders';
 import type { CompletionLog, DateKey, MemorialEntry, Pet, Task } from '@/domain/types';
 
 const uid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -13,10 +14,13 @@ interface AppState {
   log: CompletionLog;
   pet: Pet | null;
   memorial: MemorialEntry[];
+  reminderSettings: ReminderSettings;
 
   hatchPet: (name: string, species: string) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
+  updateTask: (id: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>) => void;
   archiveTask: (id: string) => void;
+  setReminderSettings: (patch: Partial<ReminderSettings>) => void;
   /** Soma (+1) ou remove (-1) uma marcação da tarefa no dia. */
   mark: (taskId: string, delta: 1 | -1, date?: DateKey) => void;
   /** Se o pet morreu, envia para o memorial e retorna true. */
@@ -30,12 +34,18 @@ export const useAppStore = create<AppState>()(
       log: {},
       pet: null,
       memorial: [],
+      reminderSettings: DEFAULT_REMINDER_SETTINGS,
 
       hatchPet: (name, species) =>
         set({ pet: { id: uid(), name: name.trim(), species, xp: 0, categoryXp: {}, bornAt: todayKey() } }),
 
       addTask: (task) =>
         set((s) => ({ tasks: [...s.tasks, { ...task, id: uid(), createdAt: todayKey() }] })),
+
+      updateTask: (id, patch) =>
+        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+
+      setReminderSettings: (patch) => set((s) => ({ reminderSettings: { ...s.reminderSettings, ...patch } })),
 
       archiveTask: (id) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, archivedAt: todayKey() } : t)) })),
@@ -84,7 +94,13 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'taskpet-store',
-      version: 1,
+      version: 2,
+      // v1 -> v2: adiciona configurações de lembretes.
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<AppState>;
+        if (version < 2) state.reminderSettings = DEFAULT_REMINDER_SETTINGS;
+        return state as AppState;
+      },
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

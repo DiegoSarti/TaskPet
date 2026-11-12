@@ -65,6 +65,13 @@ Conta os **dias inativos**: dias completos, com tarefa marcada, sem nenhuma tare
 - **Ranking** entre amigos por XP da semana, streak ou XP total.
 - **Incentivos:** 👏 💪 🔥 ❤️ ⭐.
 
+## Notificações (implementadas em `src/domain/reminders.ts`)
+- **Lembrete por tarefa:** horário opcional; toca só nos dias da tarefa e não toca se ela já foi concluída
+  (semanais/mensais param de lembrar quando a meta do período é batida).
+- **Avisos do pet** (horário configurável, padrão 19h): quando ele fica triste (2 dias), doente (4 dias)
+  e no último dia antes de partir (6 dias). Uma atividade reagenda tudo.
+- Notificações locais, agendadas para os próximos 3 dias e refeitas a cada mudança (limite de 60 no iOS).
+
 ## O que já existe (v0.1)
 - [x] Chocar ovo (3 espécies iniciais) e dar nome
 - [x] Criar tarefas (sugestões prontas ou personalizadas), marcar, desmarcar e arquivar
@@ -73,15 +80,17 @@ Conta os **dias inativos**: dias completos, com tarefa marcada, sem nenhuma tare
 - [x] Esquema do Supabase com segurança por linha (RLS), amizades, ranking e incentivos
 - [x] Telas de Amigos/Ranking e Perfil (modo demonstração enquanto o Supabase não está configurado)
 - [x] Visual provisório do pet com emojis (o lugar do Rive já está definido)
+- [x] Lembretes por tarefa e avisos do pet (v0.2)
+- [x] Editar tarefas
+- [x] Perfil criado pelo banco no cadastro (funciona com confirmação de e-mail)
 
 ## Próximos passos
 1. Criar o projeto no Supabase e testar login, amizades e ranking de ponta a ponta.
 2. Arquivo `.riv` com a primeira espécie (veja `docs/RIVE.md`) e development build.
-3. Notificações de lembrete e de "seu pet está triste" (expo-notifications).
-4. Login com Google e Apple.
-5. Ver os incentivos recebidos e notificar quando chegar um.
-6. Mais espécies (ideias em aberto).
-7. Política de privacidade e regras para menores de idade antes de publicar nas lojas.
+3. Login com Google e Apple.
+4. Ver os incentivos recebidos e receber push quando chegar um (exige push remoto, development build e EAS).
+5. Mais espécies (ideias em aberto).
+6. Política de privacidade e regras para menores de idade antes de publicar nas lojas.
 
 ## Decisões em aberto
 - Catálogo final de espécies.
